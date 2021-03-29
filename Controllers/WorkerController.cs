@@ -25,9 +25,10 @@ namespace DocuShareIndexingWorker.Controllers
 
 
         /**
-        * @notice The DeclarationMessageController.
+        * @notice Ref internal controllers.
         */
         private DeclarationMessageController _declarationMessageController;
+        private EventMessageController _eventMessageController;
 
         public WorkerController(AppConfig config)
         {
@@ -61,8 +62,9 @@ namespace DocuShareIndexingWorker.Controllers
         private void progressJob(Job job, List<FileInfo> files)
         {
 
-            // 1. Init DeclarationMessageController object.
+            // 1. Init Internal Controllers object.
             _declarationMessageController = new DeclarationMessageController(_config);
+            _eventMessageController = new EventMessageController(_config);
 
 
             // 2. Looping files and check condition with jobtype to switch process.
@@ -85,6 +87,13 @@ namespace DocuShareIndexingWorker.Controllers
 
                     // NOTE : if the refno does not exists on database its will be move to error folder.
                     moveErrorFile(sourceFileName);
+                    _eventMessageController.addEvent(new EventMessage {
+                        EventType = jobType,
+                        EventKey = refno,
+                        EventStatus = "E",
+                        EventDescription = "Find not found data.",
+                        UserID = "Worker"
+                    });
                 }
             }
         }
@@ -115,12 +124,27 @@ namespace DocuShareIndexingWorker.Controllers
                     string destinationFileName = Path.Combine(job.toPath, refno + ".PDF");
 
                     moveFile(sourceFileName, destinationFileName);
+
+                    _eventMessageController.addEvent(new EventMessage {
+                        EventType = jobType,
+                        EventKey = refno,
+                        EventStatus = "S",
+                        EventDescription = "",
+                        UserID = "Worker"
+                    });
                 }
             }
             else // Move file to error folder if cannot find reference.
             {
                 Logger.Info(string.Format("{0} Find not found", refno));
                 moveErrorFile(sourceFileName);
+                _eventMessageController.addEvent(new EventMessage {
+                        EventType = jobType,
+                        EventKey = refno,
+                        EventStatus = "E",
+                        EventDescription = "Find not found data.",
+                        UserID = "Worker"
+                    });
             }
         }
 
@@ -150,12 +174,26 @@ namespace DocuShareIndexingWorker.Controllers
                     string destinationFileName = Path.Combine(job.toPath, refno + ".PDF");
 
                     moveFile(sourceFileName, destinationFileName);
+                    _eventMessageController.addEvent(new EventMessage {
+                        EventType = jobType,
+                        EventKey = refno,
+                        EventStatus = "S",
+                        EventDescription = "",
+                        UserID = "Worker"
+                    });
                 }
             }
             else // Move file to error folder if cannot find reference.
             {
                 Logger.Info(string.Format("{0} Find not found", refno));
                 moveErrorFile(sourceFileName);
+                _eventMessageController.addEvent(new EventMessage {
+                        EventType = jobType,
+                        EventKey = refno,
+                        EventStatus = "E",
+                        EventDescription = "Find not found data.",
+                        UserID = "Worker"
+                    });
             }
         }
 

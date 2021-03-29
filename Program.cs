@@ -1,21 +1,30 @@
 ﻿using System;
-using System.Data;
-using System.Configuration;
-using System.IO;
-using DocuShareIndexingWorker.Utils;
-using DocuShareIndexingWorker.Controllers;
-using DocuShareIndexingWorker.Entities;
-using Newtonsoft.Json;
+using System.Threading.Tasks;
+using System.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using System.Linq;
 
 namespace DocuShareIndexingWorker
 {
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
+        private static async Task Main(string[] args)
         {
-            WorkerService worker = new WorkerService();
-            worker.Start();
+            var isService = !(Debugger.IsAttached || args.Contains("--console"));
 
+            var builder = new HostBuilder()
+                .ConfigureServices((hostContext, services) => {
+                    services.AddHostedService<WorkerService>();
+                });
+
+            if (isService){
+                await builder.RunAsServiceAsync();
+            }
+            else
+            {
+                await builder.RunConsoleAsync();
+            }
         }
     }
 }

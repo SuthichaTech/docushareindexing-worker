@@ -1,18 +1,44 @@
 using System;
-using System.Data;
 using System.Configuration;
-using System.IO;
-using System.Collections.Generic;
-using DocuShareIndexingWorker.Utils;
+using System.Globalization;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
 using DocuShareIndexingWorker.Controllers;
 using DocuShareIndexingWorker.Entities;
-using Newtonsoft.Json;
-
+using System.Collections.Generic;
 
 namespace DocuShareIndexingWorker
 {
-    public class WorkerService
+    public class WorkerService : IHostedService, IDisposable
     {
+
+        /**
+        * @notice worker local variables.
+        */
+        private Timer _timer;
+        private CultureInfo _cultureInfo = new CultureInfo("en-US");
+
+
+        /**
+        * @dev The function will be starting a bot.
+        */
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            
+            int timespan = 3000;
+            try {
+                timespan = Convert.ToInt32(ConfigurationManager.AppSettings["interval"]);
+            } catch {}
+
+            _timer = new Timer(
+                (e) => Start(), 
+                null, 
+                TimeSpan.Zero, 
+                TimeSpan.FromMilliseconds(timespan));
+            return Task.CompletedTask;
+        }
+
 
         /**
         * @dev Worker service will be start this process.
@@ -38,6 +64,17 @@ namespace DocuShareIndexingWorker
             }
             
 
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            _timer?.Change(Timeout.Infinite, 0);
+            return Task.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            _timer?.Dispose();
         }
     }
 }
