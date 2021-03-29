@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<table1>
+    <data>
+        <id>EXP_NMB</id>
+        <shipment_type>Export</shipment_type>
+        <from_path>D:\DMC\Export\NMB</from_path>
+        <to_path>D:\DMC\Xerox\Export\NMB</to_path>
+    </data>
+    <data>
+        <id>IMP_NMB</id>
+        <shipment_type>Import</shipment_type>
+        <from_path>D:\DMC\Import\NMB</from_path>
+        <to_path>D:\DMC\Xerox\Import\NMB</to_path>
+    </data>
+</table1>
