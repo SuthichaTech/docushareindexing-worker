@@ -8,5 +8,6 @@ namespace DocuShareIndexingWorker.Entities
         public string ApiHost {get;set;}
         public string ApiToken {get;set;}
         public int Interval {get;set;}
+        public int MAX_FILE {get;set;}
     }
 }

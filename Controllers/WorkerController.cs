@@ -9,6 +9,7 @@ using DocuShareIndexingWorker.Entities;
 using Newtonsoft.Json;
 using System.Text;
 using System.Globalization;
+using System.Linq;
 
 namespace DocuShareIndexingWorker.Controllers
 {
@@ -28,7 +29,6 @@ namespace DocuShareIndexingWorker.Controllers
         */
         private DeclarationMessageController _declarationMessageController;
 
-
         public WorkerController(AppConfig config)
         {
             _config = config;
@@ -44,12 +44,13 @@ namespace DocuShareIndexingWorker.Controllers
         {
 
             // 1. Check file on the source folder.
-            FileInfo[] files = getFiles(job.fromPath);
-            if (files.Length == 0) return;
+            var files = getFiles(job.fromPath);
+            
+            if (files.Count == 0) return;
 
             // 2. Progress job.
             progressJob(job, files);
-
+            
         }
 
 
@@ -57,7 +58,7 @@ namespace DocuShareIndexingWorker.Controllers
         /**
         * @dev This function does progress a job immediately.
         */
-        private void progressJob(Job job, params FileInfo[] files)
+        private void progressJob(Job job, List<FileInfo> files)
         {
 
             // 1. Init DeclarationMessageController object.
@@ -65,23 +66,24 @@ namespace DocuShareIndexingWorker.Controllers
 
 
             // 2. Looping files and check condition with jobtype to switch process.
-            for (int i = 0; i < files.Length; i++)
+            for (int i = 0; i < files.Count; i++)
             {
-                string sourceFileName = files[i].FullName;
-                string refno = files[i].Name.ToUpper().Replace("", ".PDF");
+                FileInfo file = files[i];
+                string sourceFileName = file.FullName;
+                string refno = file.Name.ToUpper().Replace(".PDF", "");
                 string jobType = job.workerID;
-                string fromPath = job.fromPath;
-                string toPath = job.toPath;
 
                 if (jobType.IndexOf("EXP") >= 0)
                 {
-                    createExportShipmentIndexing(files[i], job);
+                    createExportShipmentIndexing(file, job);
                 }
                 else if (jobType.IndexOf("IMP") >= 0)
                 {
-                    createImportShipmentIndexing(files[i], job);
+                    createImportShipmentIndexing(file, job);
                 }
                 else {
+
+                    // NOTE : if the refno does not exists on database its will be move to error folder.
                     moveErrorFile(sourceFileName);
                 }
             }
@@ -96,7 +98,7 @@ namespace DocuShareIndexingWorker.Controllers
         private void createExportShipmentIndexing(FileInfo file, Job job)
         {
             string sourceFileName = file.FullName;
-            string refno = file.Name.ToUpper().Replace("", ".PDF");
+            string refno = file.Name.ToUpper().Replace(".PDF", "");
             string jobType = job.workerID;
             string fromPath = job.fromPath;
             string toPath = job.toPath;
@@ -109,12 +111,15 @@ namespace DocuShareIndexingWorker.Controllers
 
                 if (writeCsvStatus)
                 {
+                    Logger.Info(string.Format("{0} Write CSV have success", refno));
                     string destinationFileName = Path.Combine(job.toPath, refno + ".PDF");
+
                     moveFile(sourceFileName, destinationFileName);
                 }
             }
             else // Move file to error folder if cannot find reference.
             {
+                Logger.Info(string.Format("{0} Find not found", refno));
                 moveErrorFile(sourceFileName);
             }
         }
@@ -128,25 +133,28 @@ namespace DocuShareIndexingWorker.Controllers
         private void createImportShipmentIndexing(FileInfo file, Job job)
         {
             string sourceFileName = file.FullName;
-            string refno = file.Name.ToUpper().Replace("", ".PDF");
+            string refno = file.Name.ToUpper().Replace(".PDF", "");
             string jobType = job.workerID;
             string fromPath = job.fromPath;
             string toPath = job.toPath;
 
-            List<DeclarationMessageResponse> expRespMessages = _declarationMessageController.getImportShipment(refno);
-            if (expRespMessages != null && expRespMessages.Count > 0) 
+            List<DeclarationMessageResponse> impRespMessages = _declarationMessageController.getImportShipment(refno);
+            if (impRespMessages != null && impRespMessages.Count > 0) 
             {
                 string destinationFile = Path.Combine(job.toPath, refno + ".csv");
-                bool writeCsvStatus = writeCsv(expRespMessages[0], destinationFile);
+                bool writeCsvStatus = writeCsv(impRespMessages[0], destinationFile);
 
                 if (writeCsvStatus)
                 {
+                    Logger.Info(string.Format("{0} Write CSV have success", refno));
                     string destinationFileName = Path.Combine(job.toPath, refno + ".PDF");
+
                     moveFile(sourceFileName, destinationFileName);
                 }
             }
             else // Move file to error folder if cannot find reference.
             {
+                Logger.Info(string.Format("{0} Find not found", refno));
                 moveErrorFile(sourceFileName);
             }
         }
@@ -164,6 +172,9 @@ namespace DocuShareIndexingWorker.Controllers
                 // NOTE : Copy file to folder.
                 File.Copy(sourceFileName, destinationFileName, true);
                 File.Delete(sourceFileName);
+
+                FileInfo file = new FileInfo(destinationFileName);
+                Logger.Info(string.Format("{0} Move PDF to AutoUpload", file.Name.ToUpper().Replace(".PDF","")));
 
             } catch (Exception ex)
             {
@@ -195,13 +206,14 @@ namespace DocuShareIndexingWorker.Controllers
                 File.Copy(sourceFileName, "", true);
                 File.Delete(sourceFileName);
 
+                Logger.Info(string.Format("{0} Move PDF to Error folder", fi.Name.ToUpper().Replace(".PDF","")));
+
             } catch (Exception ex)
             {
                 // NOTE : Trace logging.
                 Logger.Error("moveErrorFile : " + ex.Message);
             }
         }
-
 
 
         /**
@@ -215,7 +227,11 @@ namespace DocuShareIndexingWorker.Controllers
             {
                 // NOTE : Prepare csv content from Message.
                 StringBuilder sb = new StringBuilder();
-                buildCsvContent(sb, msg.metaPath);
+
+                string headerCell = @"META path,title,ShipmentType,BranchCode,RefNo,DecNO,CommercialInvoices,CmpTaxNo,CmpBranch,CmpName,VesselName,VoyNumber,MasterBL,HouseBL,DestCountry,DeptCountry,ETA,ETD,UDateDeclare,UDateRelease,MaterialType,Period";
+                sb.AppendLine(headerCell);
+                
+                buildCsvContent(sb, msg.metaPath + ".PDF");
                 buildCsvContent(sb, msg.title);
                 buildCsvContent(sb, msg.shipmentType);
                 buildCsvContent(sb, msg.branchCode);
@@ -267,10 +283,21 @@ namespace DocuShareIndexingWorker.Controllers
         * @dev The helper function will return file on the folder.
         * @param path The file path that will be contain pdf files.
         */
-        private FileInfo[] getFiles(string path)
+        private List<FileInfo> getFiles(string path)
         {
             DirectoryInfo di = new DirectoryInfo(path);
-            return di.GetFiles("*.pdf");
+            FileInfo[] files = di.GetFiles("*.pdf");
+
+            if (files.Length > _config.MAX_FILE)
+            {
+                List<FileInfo> limitFiles = new List<FileInfo>();
+                for (int i = 0; i < _config.MAX_FILE; i++)
+                {
+                    limitFiles.Add(files[i]);
+                }
+                return limitFiles;
+            }
+            else return files.ToList();
         }
     }
 }

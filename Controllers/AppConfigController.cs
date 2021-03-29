@@ -14,7 +14,8 @@ namespace DocuShareIndexingWorker.Controllers
             {
                 ApiHost = ConfigurationManager.AppSettings["api_host"].ToString(),
                 ApiToken = ConfigurationManager.AppSettings["api_key"].ToString(),
-                Interval = Convert.ToInt32(ConfigurationManager.AppSettings["interval"])
+                Interval = Convert.ToInt32(ConfigurationManager.AppSettings["interval"]),
+                MAX_FILE = Convert.ToInt32(ConfigurationManager.AppSettings["max_file"])
             };
         }
     }
