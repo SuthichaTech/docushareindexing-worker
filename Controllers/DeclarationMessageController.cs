@@ -12,68 +12,90 @@ namespace DocuShareIndexingWorker.Controllers
     public class DeclarationMessageController
     {
 
-        /**
-        * @dev Return the api URL.
-        * @param shipmentType The type of shipment.
-        * @param host The url link to the service.
-        */
-        private string createUrl(ShipmentType shipmentType, string host)
+        private readonly AppConfig _config;
+
+        public DeclarationMessageController(AppConfig config)
         {
-            return String.Format("{0}/api/declarationmessage/{1}/", 
-                            host, 
-                            shipmentType == ShipmentType.EXPORT ? "export" : "import");
+            _config = config;
+
         }
         
 
-
         /**
-        * @dev
-        * @param host Refer to url or ip address the service instance.
-        * @param token The security key that generate by system.
+        * @dev Return Export Declaration Message Data Indexing.
         * @param refno The reference number to find object.
         */
-        public List<DeclarationMessageResponse> getExportShipment(string host, string token, string refno) 
+        public List<DeclarationMessageResponse> getExportShipment(string refno)
         {
-            try 
+            string retJSONString = string.Empty;
+            try
             {
                 // 1. Create HttpWebRequest
-                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(createUrl(ShipmentType.EXPORT, host) + refno);
+                string url = string.Format("{0}/api/declarationmessage/export/{1}", _config.ApiHost, refno);
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
                 request.ContentType = "application/json";
                 request.Method = "GET";
 
                 // 2. Add token key to header.
-                request.Headers["Authorization"] = string.Format("Bearer {0}", token);
+                request.Headers["Authorization"] = string.Format("Bearer {0}", _config.ApiToken);
 
                 // 3. Instand response object.
                 HttpWebResponse response = (HttpWebResponse)request.GetResponse();
 
                 // 4. Read stream data to string object.
-                string retResponse = string.Empty;
                 using (var sr = new StreamReader(response.GetResponseStream()))
                 {
-                    retResponse = sr.ReadToEnd();
+                    retJSONString = sr.ReadToEnd();
                 }
 
-                return JsonConvert.DeserializeObject<List<DeclarationMessageResponse>>(retResponse);
-
-            } catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 // Write error log.
                 Logger.Info("getExportShipment : " + ex.Message);
             }
 
-            return null;
+            return JsonConvert.DeserializeObject<List<DeclarationMessageResponse>>(retJSONString);
+        }
+
+
+        /**
+        * @dev Return Import Declaration Message Data Indexing.
+        * @param refno The reference number to find object.
+        */
+        public List<DeclarationMessageResponse> getImportShipment(string refno)
+        {
+            string retJSONString = string.Empty;
+            try
+            {
+                // 1. Create HttpWebRequest
+                string url = string.Format("{0}/api/declarationmessage/import/{1}", _config.ApiHost, refno);
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.ContentType = "application/json";
+                request.Method = "GET";
+
+                // 2. Add token key to header.
+                request.Headers["Authorization"] = string.Format("Bearer {0}", _config.ApiToken);
+
+                // 3. Instand response object.
+                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+
+                // 4. Read stream data to string object.
+                using (var sr = new StreamReader(response.GetResponseStream()))
+                {
+                    retJSONString = sr.ReadToEnd();
+                }
+
+            }
+            catch (Exception ex)
+            {
+                // Write error log.
+                Logger.Info("getImportShipment : " + ex.Message);
+            }
+
+            return JsonConvert.DeserializeObject<List<DeclarationMessageResponse>>(retJSONString);
         }
 
     }
 
-
-    /**
-    * @notice typeof shipment type.
-    */
-    public enum ShipmentType 
-    {
-        EXPORT,
-        IMPORT
-    }
 }

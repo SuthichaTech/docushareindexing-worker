@@ -56,5 +56,39 @@ namespace DocuShareIndexingWorker.Controllers
             return JsonConvert.DeserializeObject<List<Job>>(retJSONString);
         }
 
+
+        /**
+        * @dev The function wil check and create folder if not exists.
+        */
+        public void setJobEnvaronment(Job job)
+        {
+            // 1. Create source path.
+            initPath(job.fromPath);
+
+            // 2. Create destination path.
+            initPath(job.toPath);
+
+        }
+
+        /**
+        * @dev That function will be create folder from path string.
+        * @param path The path string.
+        */
+        private void initPath(string path)
+        {
+            try 
+            {
+                if (!Directory.Exists(path))
+                {
+                    Directory.CreateDirectory(path);
+                }
+
+            } catch (Exception ex)
+            {
+                Logger.Error("initPath : {0}" + ex.Message);
+            }
+            
+        }
+
     }
 }

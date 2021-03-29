@@ -13,7 +13,7 @@ namespace DocuShareIndexingWorker
     {
         static void Main(string[] args)
         {
-            Worker worker = new Worker();
+            WorkerService worker = new WorkerService();
             worker.Start();
 
         }
